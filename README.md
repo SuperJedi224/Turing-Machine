@@ -1,4 +1,4 @@
-# Turing-Machine
+# Turing Machine
 
 A Turing Machine simulator written in Java.
 

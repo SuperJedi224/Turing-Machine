@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.*;
 
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 
 
 public class TuringMachine {
@@ -24,6 +25,7 @@ public class TuringMachine {
 		String toState;
 		char toSymbol;
 		Direction d;
+		boolean brk=false;
 		boolean halt=false;
 		int value(){
 			int i=0;
@@ -39,7 +41,7 @@ public class TuringMachine {
 			String[]r=s.split(" ");
 			StateTransition t=new StateTransition();
 			if(r.length!=5){
-				throw new IllegalArgumentException();
+				if(r.length==6&&r[5].equals("!")){t.brk=true;}else{throw new IllegalArgumentException(s);}				
 			}
 			t.toState=r[4];
 			t.fromState=r[0];
@@ -63,6 +65,7 @@ public class TuringMachine {
 				throw new IllegalArgumentException();
 			}
 			if(r[4].startsWith("halt"))t.halt=true;
+			if(t.halt&&t.brk)throw new IllegalArgumentException();
 			return t;
 		}
 		boolean matches(String state,char symbol){
@@ -89,20 +92,27 @@ public class TuringMachine {
 			if(halt){
 				Character[]t=tape.toArray(new Character[0]);
 				int i=0;
-				while(t[i]==' ')i++;
+				while(t[i]==' '&&i>t.length-1)i++;
 				int j=t.length-1;
-				while(t[j]==' ')j--;
+				while(t[j]==' '&&j>0)j--;
 				for(int k=i;k<=j;k++)System.out.print(t[k]);
 				System.out.println();
-				System.out.println("Terminated in state "+toState);
+				System.out.flush();
+				try{Thread.sleep(12);}catch(Exception e){}
+				System.err.println("Terminated in state "+toState);
 				System.exit(0);
+			}
+			if(brk){
+				if(0!=JOptionPane.showConfirmDialog(null,"Press OK to continue, or cancel to abort.","Breakpoint reached.",JOptionPane.OK_CANCEL_OPTION,JOptionPane.WARNING_MESSAGE)){
+					System.exit(0);
+				}
 			}
 		}
 		static final Comparator<StateTransition>comparator=(a,b)->a.value()-b.value();
 	}
 	static class Screen extends Component{
 		public Screen(){
-			this.setBounds(0,0,500,500);
+			this.setBounds(0,0,500,150);
 			this.setBackground(new Color(210,210,200));
 		}
 		private static final long serialVersionUID = 1L;
@@ -113,14 +123,14 @@ public class TuringMachine {
 			int i=0,x=5;
 			while(t[i]==' '&&i<t.length-1)i++;
 			int j=t.length-1;
-			while(t[j]==' '&&j>=0)j--;
+			while(t[j]==' '&&j>0)j--;
 			int q;
-			for(int k=q=Math.min(pos,Math.max(i,pos-9));k<=Math.max(pos,Math.min(j,pos+9));k++){
+			for(int k=q=Math.min(pos,Math.max(i,pos-12));k<=Math.max(pos,Math.min(j,pos+12));k++){
 				g.drawRect(x-2,5,1,15);
-				g.drawString(""+t[k],x,20);
+				g.drawString(""+t[k],x+1,20);
 				x+=10;
 			}
-			g.drawString("state: "+state+"   steps run: "+steps,4,50);
+			g.drawString("State: "+state+"   Steps run: "+steps,4,50);
 			g.drawString("^",5+10*(pos-q),35);
 			b=true;
 		}
@@ -129,20 +139,21 @@ public class TuringMachine {
 		Scanner reader=new Scanner(new File(args.length>0?args[0]:"code.txt"));
 		Scanner in=new Scanner(System.in);
 		while(reader.hasNext()){
-			String line=reader.nextLine();
+			String line=reader.nextLine().replaceAll("\\s?\\;.+$","");
 			if(!line.isEmpty())rules.add(StateTransition.valueOf(line));
 		}
 		reader.close();
 		rules.sort(StateTransition.comparator);
-		for(char c:in.nextLine().toCharArray())tape.add(c);
+		for(char c:(in.nextLine()+" ").toCharArray())tape.add(c);
 		in.close();
 		Screen s=new Screen();
 		JFrame f=new JFrame();
-		f.setBounds(0,0,500,500);
+		f.setBounds(0,0,500,150);
 		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		f.setAlwaysOnTop(true);
 		f.setVisible(true);
 		f.add(s);
+		f.setResizable(false);
 		tape.add(' ');
 		l:while(true){
 			while(pos>=tape.size())tape.add(' ');
@@ -158,7 +169,7 @@ public class TuringMachine {
 						} catch (InterruptedException e) {}
 					};
 					try {
-						Thread.sleep(50);
+						Thread.sleep(30);
 					} catch (InterruptedException e) {}
 					continue l;
 				}
